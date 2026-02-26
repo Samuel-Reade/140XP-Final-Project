@@ -1,0 +1,200 @@
+---
+title: "140XP Final Project Code"
+author: "Sam Reade"
+date: "2026-02-24"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Loading Necessary Libraries:
+
+```{r}
+
+library(ggplot2)
+library(corrplot)
+library(dplyr)
+
+```
+
+# Loading Dataset: 
+
+```{r}
+
+setwd("~/Desktop/Stats 140XP/Final Proj")
+
+store_df <- read.csv("Sample - Superstore.csv")
+
+```
+
+# Investigating Data:
+
+```{r}
+
+head(store_df)
+dim(store_df)
+summary(store_df)
+
+```
+
+# Distribution of Sales:
+
+```{r}
+
+ggplot(store_df, aes(x = Sales)) +
+  geom_histogram(bins = 40, fill = "steelblue") +
+  theme_minimal()
+
+ggplot(store_df, aes(x = log(Sales))) +
+  geom_histogram(bins = 40, fill = "darkgreen") +
+  theme_minimal()
+
+```
+
+# Distribution of Profit:
+
+```{r}
+
+ggplot(store_df, aes(x = Profit)) +
+  geom_histogram(bins = 40, fill = "purple") +
+  theme_minimal()
+
+sum(store_df$Profit < 0)
+
+```
+
+# Profit VS. Discount: 
+
+```{r}
+
+ggplot(store_df, aes(x = Discount, y = Profit)) +
+  geom_point(alpha = 0.2) +
+  theme_minimal()
+
+```
+
+# Profit By Category:
+
+```{r}
+
+ggplot(store_df, aes(x = Category, y = Profit)) +
+  geom_boxplot() +
+  theme_minimal()
+
+```
+
+# Profit By Region:
+
+```{r}
+
+ggplot(store_df, aes(x = Region, y = Profit)) +
+  geom_boxplot() +
+  theme_minimal()
+
+```
+
+# Correlation Matrix: 
+
+```{r}
+
+num_df <- store_df[, c("Sales", "Quantity", "Discount", "Profit")]
+
+cor_matrix <- cor(num_df)
+corrplot(cor_matrix, method = "color")
+
+```
+
+# Data Wrangling:
+
+Data wrangling = cleaning and transforming raw data into a usable format for analysis. 
+
+```{r}
+
+# Fixing Dates:
+store_df <- store_df %>%
+  mutate(
+    Order.Date = as.Date(Order.Date, format = "%m/%d/%Y"),
+    Ship.Date  = as.Date(Ship.Date, format = "%m/%d/%Y")
+  )
+
+# Time Variable: 
+store_df <- store_df %>%
+  mutate(
+    Ship.Delay = as.numeric(Ship.Date - Order.Date),
+    Order.Year = format(Order.Date, "%Y"),
+    Order.Month = format(Order.Date, "%m")
+  )
+
+# Removing Useless Columns:
+store_df <- store_df %>%
+  select(-Row.ID, -Order.ID, -Customer.ID, -Product.ID)
+
+# Creating Profit Margin Feature: 
+store_df <- store_df %>%
+  mutate(Profit.Margin = Profit / Sales)
+
+# Creating Loss Indicator:
+store_df <- store_df %>%
+  mutate(Loss = ifelse(Profit < 0, 1, 0))
+
+# Converting Categorical Data To Factors:
+store_df <- store_df %>%
+  mutate(
+    Segment = as.factor(Segment),
+    Region = as.factor(Region),
+    Category = as.factor(Category),
+    Sub.Category = as.factor(Sub.Category),
+    Ship.Mode = as.factor(Ship.Mode)
+  )
+
+```
+
+
+
+
+
+
+# Hypothesis Testing:
+
+# Do Discounts Reduce Profit?
+
+```{r}
+
+no_discount <- store_df$Profit[store_df$Discount == 0]
+discounted <- store_df$Profit[store_df$Discount > 0]
+
+t.test(no_discount, discounted, alternative = "greater")
+
+```
+
+# Is Average Profit Different Across Regions?
+
+```{r}
+
+anova_model <- aov(Profit ~ Region, data = store_df)
+summary(anova_model)
+
+TukeyHSD(anova_model)
+
+```
+
+# Is Discount Negatively Correlated with Profit?
+
+```{r}
+
+cor.test(store_df$Discount, store_df$Profit, alternative = "less")
+
+```
+
+
+
+
+
+
+
+
+
+
+
