@@ -1,0 +1,136 @@
+---
+title: "Stats140XP Final Project"
+author: "Junjiang Chen"
+date: "2026-02-28"
+output: pdf_document
+---
+
+```{r}
+library(dplyr)
+library(ggplot2)
+```
+```{r}
+path <- "C:/Users/junji/OneDrive/Desktop/Sample - Superstore.csv"
+store_df <- read.csv(path, stringsAsFactors = FALSE)
+
+cat("Rows:", nrow(store_df), "  Cols:", ncol(store_df), "\n")
+head(store_df)
+names(store_df)
+```
+```{r}
+# Make names consistent with your code:
+# - convert spaces to dots so "Order Date" becomes "Order.Date"
+names(store_df) <- gsub(" ", ".", names(store_df))
+names(store_df) <- gsub("\\.+", ".", names(store_df))  # remove double dots if any
+
+names(store_df)
+```
+```{r}
+store_df <- store_df %>%
+  mutate(
+    Order.Date = as.Date(Order.Date, format = "%m/%d/%Y"),
+    Ship.Date  = as.Date(Ship.Date, format = "%m/%d/%Y")
+  )
+
+# Time Variable: 
+store_df <- store_df %>%
+  mutate(
+    Ship.Delay = as.numeric(Ship.Date - Order.Date),
+    Order.Year = format(Order.Date, "%Y"),
+    Order.Month = format(Order.Date, "%m")
+  )
+
+# Removing Useless Columns:
+store_df <- store_df %>%
+  select(-Row.ID, -Order.ID, -Customer.ID, -Product.ID)
+
+# Creating Profit Margin Feature: 
+store_df <- store_df %>%
+  mutate(Profit.Margin = Profit / Sales)
+
+# Creating Loss Indicator:
+store_df <- store_df %>%
+  mutate(Loss = ifelse(Profit < 0, 1, 0))
+
+# Converting Categorical Data To Factors:
+store_df <- store_df %>%
+  mutate(
+    Segment = as.factor(Segment),
+    Region = as.factor(Region),
+    Category = as.factor(Category),
+    Sub.Category = as.factor(Sub.Category),
+    Ship.Mode = as.factor(Ship.Mode)
+  )
+```
+
+```{r}
+# Create discounted group: TRUE if Discount > 0
+store_df <- store_df %>%
+  mutate(
+    Discounted = ifelse(Discount > 0, "Yes", "No"),
+    Discounted = as.factor(Discounted),
+    Profit.Margin = ifelse(!is.na(Sales) & Sales > 0, Profit / Sales, NA_real_)
+  )
+
+# Quick count
+table(store_df$Discounted, useNA = "ifany")
+summary(store_df$Discount)
+```
+
+```{r}
+profit_summary <- store_df %>%
+  group_by(Discounted) %>%
+  summarise(
+    n = sum(!is.na(Profit)),
+    mean_profit = mean(Profit, na.rm = TRUE),
+    sd_profit = sd(Profit, na.rm = TRUE),
+    median_profit = median(Profit, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+margin_summary <- store_df %>%
+  group_by(Discounted) %>%
+  summarise(
+    n = sum(!is.na(Profit.Margin)),
+    mean_margin = mean(Profit.Margin, na.rm = TRUE),
+    sd_margin = sd(Profit.Margin, na.rm = TRUE),
+    median_margin = median(Profit.Margin, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+profit_summary
+margin_summary
+```
+```{r}
+ggplot(store_df, aes(x = Discounted, y = Profit)) +
+  geom_boxplot() +
+  labs(title = "Profit: Discounted vs Not Discounted",
+       x = "Discounted?", y = "Profit")
+
+ggplot(store_df, aes(x = Discounted, y = Profit.Margin)) +
+  geom_boxplot() +
+  labs(title = "Profit Margin: Discounted vs Not Discounted",
+       x = "Discounted?", y = "Profit Margin")
+```
+```{r}
+# Remove rows with missing values for each test
+profit_data <- store_df %>% filter(!is.na(Profit), !is.na(Discounted))
+margin_data <- store_df %>% filter(!is.na(Profit.Margin), !is.na(Discounted))
+
+# (1) Two-sample t-test (Welch) for Profit
+t_profit <- t.test(Profit ~ Discounted, data = profit_data)
+t_profit
+
+# (2) Wilcoxon rank-sum for Profit
+w_profit <- wilcox.test(Profit ~ Discounted, data = profit_data, exact = FALSE)
+w_profit
+
+# (3) Two-sample t-test (Welch) for Profit Margin
+t_margin <- t.test(Profit.Margin ~ Discounted, data = margin_data)
+t_margin
+
+# (4) Wilcoxon rank-sum for Profit Margin
+w_margin <- wilcox.test(Profit.Margin ~ Discounted, data = margin_data, exact = FALSE)
+w_margin
+```
+
