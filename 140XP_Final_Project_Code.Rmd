@@ -1,0 +1,274 @@
+---
+title: "140XP Final Project Code"
+author: "Sam Reade"
+date: "2026-02-24"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Loading Necessary Libraries:
+
+```{r}
+
+library(ggplot2)
+library(corrplot)
+library(dplyr)
+
+```
+
+# Loading Dataset: 
+
+```{r}
+
+setwd("~/Desktop/Stats 140XP/Final Proj")
+
+store_df <- read.csv("Sample - Superstore.csv")
+
+```
+
+# Investigating Data:
+
+```{r}
+
+head(store_df)
+dim(store_df)
+summary(store_df)
+
+```
+
+# Distribution of Profit and Sales:
+
+```{r}
+
+ggplot(store_df, aes(x = Profit)) +
+  geom_histogram(bins = 40, fill = "purple") +
+  theme_minimal()
+
+ggplot(store_df, aes(x = Sales)) +
+  geom_histogram(bins = 40, fill = "green") +
+  theme_minimal()
+
+```
+
+# Profit By Category:
+
+```{r}
+
+ggplot(store_df, aes(x = Category, y = Profit)) +
+  geom_boxplot() +
+  theme_minimal()
+
+```
+
+# Profit By Region:
+
+```{r}
+
+ggplot(store_df, aes(x = Region, y = Profit)) +
+  geom_boxplot() +
+  theme_minimal()
+
+```
+
+# Correlation Matrix: 
+
+```{r}
+
+num_df <- store_df[, c("Sales", "Quantity", "Discount", "Profit")]
+
+cor_matrix <- cor(num_df)
+corrplot(cor_matrix, method = "color") 
+
+```
+
+# Data Wrangling:
+
+Data wrangling = cleaning and transforming raw data into a usable format for analysis. 
+
+```{r}
+
+# Fixing Dates:
+store_df <- store_df %>%
+  mutate(
+    Order.Date = as.Date(Order.Date, format = "%m/%d/%Y"),
+    Ship.Date  = as.Date(Ship.Date, format = "%m/%d/%Y")
+  )
+
+# Time Variable: 
+store_df <- store_df %>%
+  mutate(
+    Ship.Delay = as.numeric(Ship.Date - Order.Date),
+    Order.Year = format(Order.Date, "%Y"),
+    Order.Month = format(Order.Date, "%m")
+  )
+
+# Removing Useless Columns:
+store_df <- store_df %>%
+  select(-Row.ID, -Order.ID, -Customer.ID, -Product.ID)
+
+# Creating Profit Margin Feature: 
+store_df <- store_df %>%
+  mutate(Profit.Margin = Profit / Sales)
+
+# Creating Loss Indicator:
+store_df <- store_df %>%
+  mutate(Loss = ifelse(Profit < 0, 1, 0))
+
+# Converting Categorical Data To Factors:
+store_df <- store_df %>%
+  mutate(
+    Segment = as.factor(Segment),
+    Region = as.factor(Region),
+    Category = as.factor(Category),
+    Sub.Category = as.factor(Sub.Category),
+    Ship.Mode = as.factor(Ship.Mode)
+  )
+
+```
+
+# Descriptive Stats: 
+
+```{r}
+
+# Summaries By Variable: 
+
+summary(store_df[, c("Sales", "Profit", "Quantity", 
+                     "Discount", "Ship.Delay", "Profit.Margin")])
+
+```
+
+```{r}
+
+# Grouped Statistics By Region: 
+
+store_df %>%
+  group_by(Region) %>%
+  summarise(
+    Mean_Profit = mean(Profit),
+    Mean_Sales = mean(Sales),
+    Loss_Rate = mean(Loss)
+  )
+
+# Loss Rate By Discount: 
+
+store_df %>%
+  group_by(Discount) %>%
+  summarise(Loss_Rate = mean(Loss))
+
+```
+
+# Checking Skewness Statistically: 
+
+```{r}
+
+library(e1071)
+
+skewness(store_df$Sales)
+skewness(store_df$Profit)
+
+```
+
+# Transforming Sales and Profit: 
+
+```{r}
+
+store_df <- store_df %>%
+  mutate(log_Sales = log(Sales))
+
+skewness(store_df$log_Sales)
+
+store_df <- store_df %>%
+  mutate(log_Profit = log(abs(Profit) + 1))
+
+skewness(store_df$log_Profit)
+
+```
+
+# Distributions After Transformations: 
+
+```{r}
+
+ggplot(store_df, aes(x = log_Sales)) +
+  geom_histogram(bins = 40, fill = "darkgreen") +
+  theme_minimal() +
+  labs(title = "Distribution of Log(Sales)")
+
+ggplot(store_df, aes(x = log_Profit)) +
+  geom_histogram(bins = 40, fill = "orange") +
+  theme_minimal() +
+  labs(title = "Distribution of Log(|Profit| + 1)")
+
+```
+
+# Profit VS. Discount: 
+
+```{r}
+
+ggplot(store_df, aes(x = Discount, y = Profit)) +
+  geom_point(alpha = 0.2) +
+  theme_minimal()
+
+```
+
+# Checking Correlation: 
+
+```{r}
+
+cor(store_df[, c("Sales", "Profit", "Discount", "Quantity")])
+
+```
+
+# Checking Assumptions: 
+
+```{r}
+
+shapiro.test(sample(store_df$Profit, 500))
+
+```
+
+
+# Hypothesis Testing:
+
+# Do Discounts Reduce Profit?
+
+```{r}
+
+no_discount <- store_df$Profit[store_df$Discount == 0]
+discounted <- store_df$Profit[store_df$Discount > 0]
+
+t.test(no_discount, discounted, alternative = "greater")
+
+```
+
+# Is Average Profit Different Across Regions?
+
+```{r}
+
+anova_model <- aov(Profit ~ Region, data = store_df)
+summary(anova_model)
+
+TukeyHSD(anova_model)
+
+```
+
+# Is Discount Negatively Correlated with Profit?
+
+```{r}
+
+cor.test(store_df$Discount, store_df$Profit, alternative = "less")
+
+```
+
+
+
+
+
+
+
+
+
+
+
