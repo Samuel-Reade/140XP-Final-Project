@@ -1,7 +1,7 @@
 ---
 title: "140XP Final Project Code"
-author: "Sam Reade"
-date: "2026-02-24"
+author: "Lawrence Du"
+date: "2026-03-03"
 output: pdf_document
 ---
 
@@ -75,6 +75,7 @@ summary(lm(Profit ~ Ship.Mode + Segment + Region + Category + Sales  + Discount 
 ```{r}
 summary(lm(Profit ~ Ship.Mode + Segment + Region + Category + Sales + Quantity + Discount + Order.Year + Order.Month + Ship.Delay + Profit.Margin + Loss + Discount * Region, store_df))
 ```
+
 
 
 
