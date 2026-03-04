@@ -1,0 +1,88 @@
+---
+title: "140XP Final Project Code"
+author: "Sam Reade"
+date: "2026-02-24"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Loading Necessary Libraries:
+
+```{r}
+
+library(ggplot2)
+library(corrplot)
+library(dplyr)
+
+```
+
+```{r}
+store_df <- read.csv("C:\\Users\\lawre\\Downloads\\Sample - Superstore.csv")
+store_df
+```
+
+
+```{r}
+# Fixing Dates:
+store_df <- store_df %>%
+  mutate(
+    #fix date formats
+    Order.Date = as.Date(Order.Date, format = "%m/%d/%Y"),
+    Ship.Date  = as.Date(Ship.Date, format = "%m/%d/%Y"),
+    Order.Year = format(Order.Date, "%Y"),
+    Order.Month = format(Order.Date, "%m"),
+    
+    #create time-based variables
+    Ship.Delay = as.numeric(Ship.Date - Order.Date),
+    
+    #creating profitability features
+    Profit.Margin = Profit / Sales,
+    Loss = ifelse(Profit < 0, 1, 0)
+  ) %>% 
+  # Converting Categorical Data To Factors:
+  mutate(
+    Segment = as.factor(Segment),
+    Region = as.factor(Region),
+    Category = as.factor(Category),
+    Sub.Category = as.factor(Sub.Category),
+    Ship.Mode = as.factor(Ship.Mode),
+    Postal.Code = as.factor(Postal.Code)
+  ) %>% 
+  select(-Row.ID, -Customer.ID, -Product.ID, -Country, -Order.ID, -Order.Date, -Ship.Date, -Customer.Name, -Product.Name)
+
+
+
+
+
+
+store_df
+```
+```{r}
+summary(lm(Profit ~ Ship.Mode + Segment + Region + Sales + Discount + Order.Year + Order.Month + Ship.Delay + Profit.Margin + Loss + Discount * Region, store_df))
+```
+
+```{r}
+summary(lm(Profit ~ Ship.Mode + Segment + Region + Quantity + Sales + Discount + Order.Year + Order.Month + Ship.Delay + Profit.Margin + Loss + Discount * Region, store_df))
+
+
+```
+```{r}
+summary(lm(Profit ~ Ship.Mode + Segment + Region + Category + Sales  + Discount + Order.Year + Order.Month + Ship.Delay + Profit.Margin + Loss + Discount * Region, store_df))
+```
+```{r}
+summary(lm(Profit ~ Ship.Mode + Segment + Region + Category + Sales + Quantity + Discount + Order.Year + Order.Month + Ship.Delay + Profit.Margin + Loss + Discount * Region, store_df))
+```
+
+
+
+
+
+
+
+
+
+
+
