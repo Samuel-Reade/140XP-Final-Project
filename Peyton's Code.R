@@ -33,3 +33,13 @@ state_comparison <- order_profit %>%
     Orders = n(),
     .groups = "drop"
   )
+
+
+order_profit$State <- as.factor(order_profit$State)
+order_profit$Discount_Binary <- as.factor(order_profit$Discount_Binary)
+
+# 2-Way ANOVA with interaction
+anova_2way <- aov(Total_Profit ~ Discount_Binary * State, 
+                  data = order_profit)
+
+summary(anova_2way)
