@@ -1,0 +1,139 @@
+---
+title: "test"
+author: "JunjiangChen_205868706"
+date: "2026-03-09"
+output:
+  pdf_document: default
+  html_document: default
+header-includes:
+  - \usepackage{caption}
+  - \captionsetup[table]{labelformat=empty}
+---
+
+```{r}
+library(dplyr)
+library(ggplot2)
+library(knitr)
+
+path <- "/Users/acu/Downloads/Sample - Superstore.csv"
+store_df <- read.csv(path, stringsAsFactors = FALSE)
+
+cat("Rows:", nrow(store_df), "  Cols:", ncol(store_df), "\n")
+kable(head(store_df), caption = "Preview of Original Data")
+kable(data.frame(Variable_Names = names(store_df)), caption = "Original Variable Names")
+
+names(store_df) <- gsub(" ", ".", names(store_df))
+names(store_df) <- gsub("\\.+", ".", names(store_df))
+kable(data.frame(Variable_Names = names(store_df)), caption = "Cleaned Variable Names")
+
+store_df <- store_df %>%
+  mutate(
+    Order.Date = as.Date(Order.Date, format = "%m/%d/%Y"),
+    Ship.Date  = as.Date(Ship.Date, format = "%m/%d/%Y")
+  ) %>%
+  mutate(
+    Ship.Delay = as.numeric(Ship.Date - Order.Date),
+    Order.Year = format(Order.Date, "%Y"),
+    Order.Month = format(Order.Date, "%m")
+  ) %>%
+  select(-Row.ID, -Order.ID, -Customer.ID, -Product.ID) %>%
+  mutate(
+    Profit.Margin = Profit / Sales,
+    Loss = ifelse(Profit < 0, 1, 0),
+    Segment = as.factor(Segment),
+    Region = as.factor(Region),
+    Category = as.factor(Category),
+    Sub.Category = as.factor(Sub.Category),
+    Ship.Mode = as.factor(Ship.Mode)
+  )
+
+store_df <- store_df %>%
+  mutate(
+    Discounted = ifelse(Discount > 0, "Yes", "No"),
+    Discounted = as.factor(Discounted),
+    Profit.Margin = ifelse(!is.na(Sales) & Sales > 0, Profit / Sales, NA_real_)
+  )
+
+discount_count <- as.data.frame(table(store_df$Discounted, useNA = "ifany"))
+colnames(discount_count) <- c("Discounted", "Count")
+kable(discount_count, caption = "Count of Discounted vs Not Discounted")
+
+discount_summary <- summary(store_df$Discount)
+kable(
+  data.frame(
+    Statistic = names(discount_summary),
+    Value = as.numeric(discount_summary)
+  ),
+  caption = "Summary of Discount"
+)
+
+profit_summary <- store_df %>%
+  group_by(Discounted) %>%
+  summarise(
+    n = sum(!is.na(Profit)),
+    mean_profit = mean(Profit, na.rm = TRUE),
+    sd_profit = sd(Profit, na.rm = TRUE),
+    median_profit = median(Profit, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+margin_summary <- store_df %>%
+  group_by(Discounted) %>%
+  summarise(
+    n = sum(!is.na(Profit.Margin)),
+    mean_margin = mean(Profit.Margin, na.rm = TRUE),
+    sd_margin = sd(Profit.Margin, na.rm = TRUE),
+    median_margin = median(Profit.Margin, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+kable(profit_summary, caption = "Profit Summary by Discount Group")
+kable(margin_summary, caption = "Profit Margin Summary by Discount Group")
+
+profit_data <- store_df %>% filter(!is.na(Profit), !is.na(Discounted))
+margin_data <- store_df %>% filter(!is.na(Profit.Margin), !is.na(Discounted))
+
+t_profit <- t.test(Profit ~ Discounted, data = profit_data)
+w_profit <- wilcox.test(Profit ~ Discounted, data = profit_data, exact = FALSE)
+
+t_margin <- t.test(Profit.Margin ~ Discounted, data = margin_data)
+w_margin <- wilcox.test(Profit.Margin ~ Discounted, data = margin_data, exact = FALSE)
+
+t_profit_table <- data.frame(
+  Test = "Welch Two Sample t-test (Profit)",
+  Statistic = unname(t_profit$statistic),
+  DF = unname(t_profit$parameter),
+  P_Value = t_profit$p.value,
+  Mean_Group1 = unname(t_profit$estimate[1]),
+  Mean_Group2 = unname(t_profit$estimate[2]),
+  CI_Lower = t_profit$conf.int[1],
+  CI_Upper = t_profit$conf.int[2]
+)
+
+w_profit_table <- data.frame(
+  Test = "Wilcoxon Rank-Sum Test (Profit)",
+  Statistic = unname(w_profit$statistic),
+  P_Value = w_profit$p.value
+)
+
+t_margin_table <- data.frame(
+  Test = "Welch Two Sample t-test (Profit Margin)",
+  Statistic = unname(t_margin$statistic),
+  DF = unname(t_margin$parameter),
+  P_Value = t_margin$p.value,
+  Mean_Group1 = unname(t_margin$estimate[1]),
+  Mean_Group2 = unname(t_margin$estimate[2]),
+  CI_Lower = t_margin$conf.int[1],
+  CI_Upper = t_margin$conf.int[2]
+)
+
+w_margin_table <- data.frame(
+  Test = "Wilcoxon Rank-Sum Test (Profit Margin)",
+  Statistic = unname(w_margin$statistic),
+  P_Value = w_margin$p.value
+)
+
+kable(t_profit_table, caption = "Welch Two-Sample t-test for Profit")
+kable(w_profit_table, caption = "Wilcoxon Rank-Sum Test for Profit")
+kable(t_margin_table, caption = "Welch Two-Sample t-test for Profit Margin")
+kable(w_margin_table, caption = "Wilcoxon Rank-Sum Test for Profit Margin")
